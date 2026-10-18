@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catálogo</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--ac:#1e88e5;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1120;--card:#141d33;--tx:#f3f4f6;--mu:#9ca3af;--bd:#243049}}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:40px}
+header{padding:22px 16px 10px;max-width:1000px;margin:auto}
+h1{font-size:26px}
+.sub{color:var(--mu);font-size:14px;margin-top:2px}
+.wrap{max-width:1000px;margin:auto;padding:0 12px}
+input.q{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px;margin:12px 0 8px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:99px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;overflow:hidden;cursor:pointer;position:relative}
+.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--bd)}
+.card .in{padding:10px 12px 12px}
+.card b{display:block;font-size:15px;line-height:1.25}
+.pr{margin-top:4px;font-weight:700;color:var(--ac)}
+.pr s{color:var(--mu);font-weight:400;margin-right:4px}
+.tag{position:absolute;top:8px;left:8px;background:#e53935;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.empty{text-align:center;color:var(--mu);padding:60px 16px}
+#md{display:none;position:fixed;inset:0;background:#000a;z-index:10;align-items:flex-end;justify-content:center}
+#md.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:0 0 18px}
+@media(min-width:700px){#md{align-items:center}.sheet{border-radius:20px}}
+.sheet .main{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--bd)}
+.th{display:flex;gap:8px;padding:10px 16px 0;overflow-x:auto}
+.th img{width:60px;height:60px;object-fit:cover;border-radius:10px;border:2px solid transparent;cursor:pointer;flex:none}
+.th img.on{border-color:var(--ac)}
+.body{padding:12px 18px 0}
+.body h2{font-size:20px}
+.body p{color:var(--mu);margin:8px 0;white-space:pre-line;line-height:1.45}
+.vs{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.v{border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:8px 14px;border-radius:10px;font-size:14px;cursor:pointer}
+.v.on{border-color:var(--ac);background:var(--ac);color:#fff}
+.btn{display:block;text-align:center;text-decoration:none;background:#25d366;color:#fff;font-weight:700;padding:14px;border-radius:12px;margin-top:14px;font-size:16px;border:0;width:100%;cursor:pointer}
+.btn.g{background:var(--bg);color:var(--tx);border:1px solid var(--bd);margin-top:8px}
+.x{position:sticky;top:0;float:right;margin:10px;z-index:2;width:36px;height:36px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:18px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="brand">Catálogo</h1>
+  <div class="sub" id="sub"></div>
+</header>
+<div class="wrap">
+  <input class="q" id="q" type="search" placeholder="Buscar producto…" autocomplete="off">
+  <div class="chips" id="cats"></div>
+  <div class="chips" id="cts"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="msg">Cargando catálogo…</div>
+</div>
+<div id="md"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let D=null,cat='Todos',ctId=null,query='';
+const money=n=>(D.set.cur||'$')+Number(n).toFixed(2);
+const imgs=p=>p.imgs?.length?p.imgs:(p.img?[p.img]:[]);
+
+async function init(){
+  try{
+    const r=await fetch('catalogo.json?v='+Date.now());
+    if(!r.ok)throw 0;
+    D=await r.json();
+  }catch(e){
+    $('#msg').textContent='No se pudo cargar el catálogo. Si abriste el archivo directo desde tu celular o computadora, súbelo a un hosting para verlo.';
+    return;
+  }
+  D.set=D.set||{};D.p=D.p||[];D.c=D.c||[];
+  document.title=D.set.brand||'Catálogo';
+  $('#brand').textContent=D.set.brand||'Catálogo';
+  ctId=D.c[0]?.id||null;
+  draw();
+}
+
+function current(){
+  const c=D.c.find(x=>x.id==ctId);
+  const ps=c?c.ids.map(id=>D.p.find(p=>p.id==id)).filter(Boolean):D.p;
+  if(c?.ac)document.documentElement.style.setProperty('--ac',c.ac);
+  return ps;
+}
+
+function draw(){
+  const base=current();
+  $('#sub').textContent=D.c.find(x=>x.id==ctId)?.title||'';
+  $('#cts').innerHTML=D.c.length>1?D.c.map(c=>`<button class="chip ${c.id==ctId?'on':''}" onclick="ctId='${c.id}';cat='Todos';draw()">${esc(c.title)}</button>`).join(''):'';
+  const cs=['Todos',...new Set(base.map(p=>p.cat||'Sin categoría'))];
+  if(!cs.includes(cat))cat='Todos';
+  $('#cats').innerHTML=cs.length>2?cs.map(c=>`<button class="chip ${c==cat?'on':''}" onclick="cat=this.dataset.c;draw()" data-c="${esc(c)}">${esc(c)}</button>`).join(''):'';
+  const q=query.trim().toLowerCase();
+  const ps=base.filter(p=>(cat=='Todos'||(p.cat||'Sin categoría')==cat)&&(!q||(p.name+' '+(p.desc||'')).toLowerCase().includes(q)));
+  $('#grid').innerHTML=ps.map(p=>`<div class="card" onclick="openP('${p.id}')">${p.sale?'<span class="tag">OFERTA</span>':''}<img loading="lazy" decoding="async" src="${imgs(p)[0]||''}" alt="${esc(p.name)}"><div class="in"><b>${esc(p.name)}</b><div class="pr">${p.sale?`<s>${money(p.price)}</s>${money(p.sale)}`:money(p.price)}</div></div></div>`).join('');
+  $('#msg').style.display=ps.length?'none':'block';
+  $('#msg').textContent=base.length?'No hay productos con esa búsqueda.':'Aún no hay productos publicados.';
+}
+
+let sel={v:null,i:0};
+function openP(id){
+  const p=D.p.find(x=>x.id==id);if(!p)return;
+  sel={p,v:null,i:0};renderP();
+  $('#md').classList.add('on');document.body.style.overflow='hidden';
+}
+function renderP(){
+  const {p,v,i}=sel,im=imgs(p);
+  const tel=String(D.set.tel||'').replace(/\D/g,'');
+  const num=tel.length==10?'52'+tel:tel;
+  const txt=`Hola, me interesa: ${p.name}${v?' ('+v+')':''} — ${money(p.sale||p.price)}`;
+  $('#sheet').innerHTML=`<button class="x" onclick="closeP()">✕</button>
+  <img class="main" src="${im[i]||''}" alt="${esc(p.name)}">
+  ${im.length>1?`<div class="th">${im.map((x,k)=>`<img class="${k==i?'on':''}" src="${x}" onclick="sel.i=${k};renderP()">`).join('')}</div>`:''}
+  <div class="body"><h2>${esc(p.name)}</h2>
+  <div class="pr" style="font-size:20px">${p.sale?`<s>${money(p.price)}</s>${money(p.sale)}`:money(p.price)}</div>
+  ${p.desc?.trim()?`<p>${esc(p.desc)}</p>`:''}
+  ${p.vars?.length?`<div class="vs">${p.vars.map(x=>`<button class="v ${x==v?'on':''}" data-v="${esc(x)}" onclick="sel.v=sel.v==this.dataset.v?null:this.dataset.v;renderP()">${esc(x)}</button>`).join('')}</div>`:''}
+  ${num?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${num}?text=${encodeURIComponent(txt)}">Pedir por WhatsApp</a>`:''}
+  <button class="btn g" onclick="closeP()">Seguir viendo</button></div>`;
+}
+function closeP(){$('#md').classList.remove('on');document.body.style.overflow=''}
+$('#md').addEventListener('click',e=>{if(e.target.id=='md')closeP()});
+$('#q').addEventListener('input',e=>{query=e.target.value;draw()});
+init();
+</script>
+</body>
+</html>
